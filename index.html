@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fear & Greed Index Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* Import Inter font from Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            /* Apply the background gradient directly to the body */
+            background: linear-gradient(to bottom right, #e0f2fe, #eef2ff); /* from-blue-50 to-indigo-100 */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div id="app-container" class="w-full max-w-5xl mx-auto bg-white shadow-2xl rounded-2xl p-8 border border-gray-200">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-10">Market Sentiment Tracker</h1>
+
+        <!-- Today's Fear & Greed Index Card -->
+        <div id="today-data-card" class="mb-12 transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
+            <!-- Content will be injected by JavaScript -->
+            <div class="p-6 rounded-2xl shadow-xl text-white text-center bg-gray-500">
+                <h2 class="text-xl font-semibold mb-2">Today’s Fear & Greed Index</h2>
+                <p class="text-6xl font-black mb-2">Loading...</p>
+                <p class="text-2xl font-semibold mb-2">Fetching Data</p>
+                <p class="text-sm opacity-80 italic">As of --/--/----</p>
+            </div>
+        </div>
+
+        <!-- Market Commentary Card -->
+        <div class="mb-12 p-8 rounded-2xl bg-indigo-50 border border-indigo-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+            <h2 class="text-2xl font-bold text-indigo-800 mb-4 text-center">Understanding Market Sentiment</h2>
+            <p class="text-base text-gray-700 leading-relaxed text-justify">
+                Market sentiment, driven by the Fear & Greed Index, reflects the collective psychological state of investors. Extreme fear can signal oversold conditions and potential buying opportunities, while extreme greed might suggest an overheated market ripe for correction. Our tracker provides real-time and historical insights to inform your financial decisions.
+            </p>
+        </div>
+
+        <!-- Historical Charts Section -->
+        <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Historical Trends</h2>
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <!-- 7-Day Historical Chart Card -->
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">Last 7 Days</h3>
+                <div class="relative h-64 sm:h-80 md:h-96">
+                    <canvas id="chart7Days"></canvas>
+                </div>
+            </div>
+            <!-- 30-Day Historical Chart Card -->
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">Last 30 Days</h3>
+                <div class="relative h-64 sm:h-80 md:h-96">
+                    <canvas id="chart30Days"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly View Section -->
+        <div class="p-8 rounded-2xl bg-gray-50 border border-gray-200 shadow-xl">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">View by Month</h2>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+                <select id="month-select" class="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <!-- Options will be populated by JS -->
+                </select>
+                <select id="year-select" class="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <!-- Options will be populated by JS -->
+                </select>
+                <button id="view-month-btn" class="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-md shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200">
+                    View Month
+                </button>
+            </div>
+            <div class="relative h-64 sm:h-80 md:h-96">
+                <canvas id="chartMonthly"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api/fear-greed';
+
+        // Function to get Tailwind-like background and sentiment label
+        function getSentimentStyles(value) {
+            if (value >= 0 && value <= 20) return ['bg-red-600', 'Extreme Fear'];
+            if (value > 20 && value <= 40) return ['bg-orange-500', 'Fear'];
+            if (value > 40 && value <= 60) return ['bg-blue-500', 'Neutral'];
+            if (value > 60 && value <= 80) return ['bg-green-500', 'Greed'];
+            if (value > 80 && value <= 100) return ['bg-purple-600', 'Extreme Greed'];
+            return ['bg-gray-500', 'Unknown']; // Fallback
+        }
+
+        // Function to get Chart.js point color based on sentiment
+        function getChartPointColor(sentiment) {
+            switch (sentiment) {
+                case 'Extreme Fear': return 'rgba(220, 38, 38, 0.9)'; // Red-600
+                case 'Fear': return 'rgba(249, 115, 22, 0.9)';    // Orange-500
+                case 'Neutral': return 'rgba(37, 99, 235, 0.9)'; // Blue-600
+                case 'Greed': return 'rgba(34, 197, 94, 0.9)';    // Green-500
+                case 'Extreme Greed': return 'rgba(147, 51, 234, 0.9)'; // Purple-600
+                default: return 'rgba(37, 99, 235, 0.9)'; // Default Blue
+            }
+        }
+
+        let chartInstance7Days = null;
+        let chartInstance30Days = null;
+        let chartInstanceMonthly = null; // New instance for monthly chart
+
+        // Function to render/update a Chart.js graph
+        function renderChart(canvasId, data, title) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            let chartInstance;
+
+            // Determine which chart instance to manage
+            if (canvasId === 'chart7Days') {
+                chartInstance = chartInstance7Days;
+            } else if (canvasId === 'chart30Days') {
+                chartInstance = chartInstance30Days;
+            } else if (canvasId === 'chartMonthly') {
+                chartInstance = chartInstanceMonthly;
+            }
+
+            // Destroy existing chart instance if it exists
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            if (!data || data.length === 0) {
+                // Display "No data" message on canvas
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = "18px 'Inter'";
+                ctx.fillStyle = "#4b5563"; // gray-600
+                ctx.textAlign = "center";
+                ctx.fillText("No data available for this period.", ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+
+            const labels = data.map(item =>
+                new Date(item.recordDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            );
+            const values = data.map(item => item.fgiValue);
+            const sentiments = data.map(item => item.sentiment);
+            const pointColors = sentiments.map(getChartPointColor);
+
+            const chartConfig = {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'FGI Value',
+                        data: values,
+                        borderColor: 'rgba(99, 102, 241, 1)', // Indigo-500
+                        backgroundColor: (context) => {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return;
+                            const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                            gradient.addColorStop(0, 'rgba(199, 210, 254, 0.5)'); // Indigo-200 with transparency
+                            gradient.addColorStop(1, 'rgba(165, 180, 252, 0.3)'); // Indigo-300 with transparency
+                            return gradient;
+                        },
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: pointColors,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: 20 // Padding around the chart content within the canvas
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: context => `${context.dataset.label}: ${context.parsed.y} (${sentiments[context.dataIndex]})`
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                color: '#374151', /* gray-700 */
+                                font: {
+                                    family: 'Inter',
+                                    size: 14,
+                                    weight: '600'
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#4b5563', font: { family: 'Inter', size: 12 } }, /* gray-600 */
+                            grid: { display: false }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { color: '#4b5563', font: { family: 'Inter', size: 12 } }, /* gray-600 */
+                            grid: { color: 'rgba(209, 213, 219, 0.5)' } /* gray-300 with transparency */
+                        }
+                    }
+                }
+            };
+
+            // Assign the new chart instance
+            if (canvasId === 'chart7Days') {
+                chartInstance7Days = new Chart(ctx, chartConfig);
+            } else if (canvasId === 'chart30Days') {
+                chartInstance30Days = new Chart(ctx, chartConfig);
+            } else if (canvasId === 'chartMonthly') {
+                chartInstanceMonthly = new Chart(ctx, chartConfig);
+            }
+        }
+
+        // Populate month and year dropdowns
+        function populateMonthYearDropdowns() {
+            const monthSelect = document.getElementById('month-select');
+            const yearSelect = document.getElementById('year-select');
+            const months = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ];
+            const currentYear = new Date().getFullYear();
+
+            // Populate months
+            months.forEach((month, index) => {
+                const option = document.createElement('option');
+                option.value = index + 1; // Month is 1-indexed for backend
+                option.textContent = month;
+                monthSelect.appendChild(option);
+            });
+            // Set current month as default
+            monthSelect.value = new Date().getMonth() + 1;
+
+            // Populate years (current year and previous 4 years = 5 years total viewable)
+            for (let i = 0; i < 5; i++) { // Changed from 6 to 5 for 5-year viewable timeline
+                const year = currentYear - i;
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearSelect.appendChild(option);
+            }
+            // Set current year as default
+            yearSelect.value = currentYear;
+        }
+
+        // Main data fetching and UI update logic
+        async function fetchAndRenderData() {
+            const todayCardElement = document.getElementById('today-data-card');
+            
+            // Show loading state for today's card
+            todayCardElement.innerHTML = `
+                <div class="p-6 rounded-2xl shadow-xl text-white text-center bg-gray-500">
+                    <h2 class="text-xl font-semibold mb-2">Today’s Fear & Greed Index</h2>
+                    <p class="text-6xl font-black mb-2">Loading...</p>
+                    <p class="text-2xl font-semibold mb-2">Fetching Data</p>
+                    <p class="text-sm opacity-80 italic">As of --/--/----</p>
+                </div>
+            `;
+
+            try {
+                // Fetch today's data
+                const todayResponse = await fetch(`${API_BASE_URL}/today`);
+                if (todayResponse.ok) {
+                    const todayData = await todayResponse.json();
+                    const [bgColor, sentimentLabel] = getSentimentStyles(todayData.fgiValue);
+                    todayCardElement.innerHTML = `
+                        <div class="p-8 rounded-2xl shadow-xl text-white text-center ${bgColor}">
+                            <h2 class="text-4xl font-extrabold mb-4">Today’s Fear & Greed Index</h2>
+                            <p class="text-7xl font-black leading-tight">${todayData.fgiValue}</p>
+                            <p class="text-3xl font-semibold mt-3 text-white">${sentimentLabel}</p>
+                            <p class="text-sm opacity-90 italic">As of ${new Date(todayData.recordDate).toLocaleDateString()}</p>
+                        </div>
+                    `;
+                } else if (todayResponse.status === 404) {
+                    todayCardElement.innerHTML = `
+                        <div class="p-8 rounded-2xl shadow-xl text-center bg-yellow-50 border border-yellow-200 text-yellow-800">
+                            <p class="font-semibold text-lg">Today's Fear & Greed Index data is not available.</p>
+                            <p class="text-sm mt-2">It might be a weekend/holiday, or the daily fetch hasn't run.</p>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`HTTP error! status for today's data: ${todayResponse.status}`);
+                }
+
+                // Fetch historical data (7 days)
+                const history7DaysResponse = await fetch(`${API_BASE_URL}/history?days=7`);
+                if (history7DaysResponse.ok) {
+                    const historicalData7Days = await history7DaysResponse.json();
+                    renderChart('chart7Days', historicalData7Days, 'Last 7 Days');
+                } else {
+                    throw new Error(`HTTP error! status for 7-day history: ${history7DaysResponse.status}`);
+                }
+
+                // Fetch historical data (30 days)
+                const history30DaysResponse = await fetch(`${API_BASE_URL}/history?days=30`);
+                if (history30DaysResponse.ok) {
+                    const historicalData30Days = await history30DaysResponse.json();
+                    renderChart('chart30Days', historicalData30Days, 'Last 30 Days');
+                } else {
+                    throw new Error(`HTTP error! status for 30-day history: ${history30DaysResponse.status}`);
+                }
+
+                // Initial monthly chart load (current month)
+                const monthSelect = document.getElementById('month-select');
+                const yearSelect = document.getElementById('year-select');
+                const currentMonth = parseInt(monthSelect.value); // Use value from dropdown
+                const currentYear = parseInt(yearSelect.value);   // Use value from dropdown
+
+                const monthlyResponse = await fetch(`${API_BASE_URL}/history-by-month?year=${currentYear}&month=${currentMonth}`);
+                if (monthlyResponse.ok) {
+                    const monthlyData = await monthlyResponse.json();
+                    renderChart('chartMonthly', monthlyData, `Data for ${months[currentMonth - 1]} ${currentYear}`);
+                } else {
+                    throw new Error(`HTTP error! status for monthly data: ${monthlyResponse.status}`);
+                }
+
+
+            } catch (error) {
+                console.error("Error fetching or rendering data:", error);
+                document.getElementById('app-container').innerHTML = `
+                    <div class="min-h-screen flex items-center justify-center text-red-800 bg-red-50 p-8 rounded-2xl shadow-xl border border-red-200 text-center">
+                        <p class="text-xl font-semibold">Failed to load data: ${error.message}. Please ensure the backend is running and accessible.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Event listener for monthly view button
+        document.addEventListener('DOMContentLoaded', () => {
+            populateMonthYearDropdowns();
+            fetchAndRenderData(); // Initial fetch on load
+
+            document.getElementById('view-month-btn').addEventListener('click', async () => {
+                const month = document.getElementById('month-select').value;
+                const year = document.getElementById('year-select').value;
+                try {
+                    const response = await fetch(`${API_BASE_URL}/history-by-month?year=${year}&month=${month}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        renderChart('chartMonthly', data, `Data for ${months[month - 1]} ${year}`);
+                        if (data.length === 0) {
+                            // This message is already handled by renderChart, but can add console log
+                            console.log(`No data found for ${months[month - 1]} ${year}.`);
+                        }
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error("Error fetching monthly data:", error);
+                    // Instead of alert, the chart will show "No data available" if the fetch fails or returns empty
+                    renderChart('chartMonthly', [], ''); // Clear chart on error
+                }
+            });
+        });
+
+        // Global months array for dropdowns (defined after its use in populateMonthYearDropdowns)
+        // Moved to top for better scope management
+        const months = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+    </script>
+</body>
+</html>
