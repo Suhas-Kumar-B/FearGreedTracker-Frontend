@@ -6,7 +6,7 @@
     <title>Fear & Greed Index Tracker</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN -->
+    <!-- Chart.js CDN (still needed for historical graphs) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* Import Inter font from Google Fonts */
@@ -16,69 +16,132 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            /* Apply the background gradient directly to the body */
-            background: linear-gradient(to bottom right, #e0f2fe, #eef2ff); /* from-blue-50 to-indigo-100 */
+            background: linear-gradient(to bottom right, #e0f2fe, #eef2ff); /* Light blue/indigo gradient */
         }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-6">
-    <div id="app-container" class="w-full max-w-5xl mx-auto bg-white shadow-2xl rounded-2xl p-8 border border-gray-200">
-        <h1 class="text-4xl font-bold text-center text-gray-800 mb-10">Market Sentiment Tracker</h1>
+    <div id="app-container" class="w-full max-w-5xl mx-auto bg-gray-900 text-white shadow-2xl rounded-2xl p-4 sm:p-8 border border-gray-700">
+        <h1 class="text-3xl sm:text-4xl font-bold text-left text-gray-100 mb-6">Fear & Greed Index</h1>
+        <p class="text-base sm:text-lg text-gray-300 mb-2">What emotion is driving the market now?</p>
+        <a href="#learn-more-section" id="learn-more-btn" class="text-blue-400 hover:underline text-sm mb-8 inline-block cursor-pointer">Learn more about the index</a>
 
-        <!-- Today's Fear & Greed Index Card -->
-        <div id="today-data-card" class="mb-12 transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
-            <!-- Content will be injected by JavaScript -->
-            <div class="p-6 rounded-2xl shadow-xl text-white text-center bg-gray-500">
-                <h2 class="text-xl font-semibold mb-2">Today’s Fear & Greed Index</h2>
-                <p class="text-6xl font-black mb-2">Loading...</p>
-                <p class="text-2xl font-semibold mb-2">Fetching Data</p>
-                <p class="text-sm opacity-80 italic">As of --/--/----</p>
+        <!-- Main Gauge and Previous Data Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center mb-12">
+            <!-- Gauge Canvas -->
+            <div class="relative w-full aspect-square max-w-md mx-auto">
+                <canvas id="fearGreedGauge" class="block"></canvas>
+                <div id="gauge-value-display" class="absolute text-white text-5xl sm:text-6xl font-extrabold text-center w-full">
+                    <!-- Value injected by JS -->
+                </div>
+                <div id="gauge-date-display" class="absolute text-gray-400 text-xs text-center w-full">
+                    <!-- Date injected by JS -->
+                </div>
+            </div>
+
+            <!-- Previous Data Comparison -->
+            <div class="space-y-3 sm:space-y-4 text-sm sm:text-lg">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-300">Previous close</span>
+                    <span id="prev-close-value" class="font-semibold text-gray-100">N/A</span>
+                    <span id="prev-close-sentiment" class="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300"></span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-300">1 week ago</span>
+                    <span id="prev-week-value" class="font-semibold text-gray-100">N/A</span>
+                    <span id="prev-week-sentiment" class="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300"></span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-300">1 month ago</span>
+                    <span id="prev-month-value" class="font-semibold text-gray-100">N/A</span>
+                    <span id="prev-month-sentiment" class="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300"></span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-300">1 year ago</span>
+                    <span id="prev-year-value" class="font-semibold text-gray-100">N/A</span>
+                    <span id="prev-year-sentiment" class="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300"></span>
+                </div>
+                <p class="text-xs text-gray-500 mt-4">
+                    * Values for "Previous close", "1 week ago", "1 month ago", and "1 year ago" are derived from historical data if available.
+                </p>
             </div>
         </div>
 
         <!-- Market Commentary Card -->
-        <div class="mb-12 p-8 rounded-2xl bg-indigo-50 border border-indigo-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-            <h2 class="text-2xl font-bold text-indigo-800 mb-4 text-center">Understanding Market Sentiment</h2>
-            <p class="text-base text-gray-700 leading-relaxed text-justify">
+        <div class="mb-12 p-6 sm:p-8 rounded-2xl bg-gray-800 border border-gray-700 shadow-xl">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-100 mb-4 text-center">Understanding Market Sentiment</h2>
+            <p class="text-sm sm:text-base text-gray-300 leading-relaxed text-justify">
                 Market sentiment, driven by the Fear & Greed Index, reflects the collective psychological state of investors. Extreme fear can signal oversold conditions and potential buying opportunities, while extreme greed might suggest an overheated market ripe for correction. Our tracker provides real-time and historical insights to inform your financial decisions.
             </p>
         </div>
 
         <!-- Historical Charts Section -->
-        <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Historical Trends</h2>
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-100 text-center mb-6">Historical Trends</h2>
         <div class="grid md:grid-cols-2 gap-6 mb-8">
             <!-- 7-Day Historical Chart Card -->
-            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
-                <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">Last 7 Days</h3>
+            <div class="bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-700 overflow-x-auto">
+                <h3 class="text-lg sm:text-xl font-semibold text-gray-100 mb-4 text-center">Last 7 Days</h3>
                 <div class="relative h-64 sm:h-80 md:h-96">
-                    <canvas id="chart7Days"></canvas>
+                    <canvas id="chart7Days" class="w-full"></canvas>
                 </div>
             </div>
             <!-- 30-Day Historical Chart Card -->
-            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
-                <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">Last 30 Days</h3>
+            <div class="bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-700 overflow-x-auto">
+                <h3 class="text-lg sm:text-xl font-semibold text-gray-100 mb-4 text-center">Last 30 Days</h3>
                 <div class="relative h-64 sm:h-80 md:h-96">
-                    <canvas id="chart30Days"></canvas>
+                    <canvas id="chart30Days" class="w-full"></canvas>
                 </div>
             </div>
         </div>
 
         <!-- Monthly View Section -->
-        <div class="p-8 rounded-2xl bg-gray-50 border border-gray-200 shadow-xl">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">View by Month</h2>
+        <div class="p-6 sm:p-8 rounded-2xl bg-gray-800 border border-gray-700 shadow-xl overflow-x-auto">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-100 mb-4 text-center">View by Month</h2>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
-                <select id="month-select" class="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <select id="month-select" class="p-2 border border-gray-600 rounded-md shadow-sm bg-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base">
                     <!-- Options will be populated by JS -->
                 </select>
-                <select id="year-select" class="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <select id="year-select" class="p-2 border border-gray-600 rounded-md shadow-sm bg-gray-700 text-gray-100 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base">
                     <!-- Options will be populated by JS -->
                 </select>
-                <button id="view-month-btn" class="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-md shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200">
+                <button id="view-month-btn" class="px-4 py-2 sm:px-6 sm:py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 text-sm sm:text-base">
                     View Month
                 </button>
             </div>
             <div class="relative h-64 sm:h-80 md:h-96">
-                <canvas id="chartMonthly"></canvas>
+                <canvas id="chartMonthly" class="w-full"></canvas>
+            </div>
+        </div>
+
+        <!-- Learn More Information Section (Added at the very bottom) -->
+        <div id="learn-more-section" class="mt-12 p-6 sm:p-8 rounded-2xl bg-gray-800 border border-gray-700 shadow-xl">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-100 mb-6 text-center">About the Fear & Greed Index</h2>
+            
+            <div class="space-y-6 text-gray-300">
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-200 mb-2">What is the Business Fear & Greed Index?</h3>
+                    <p class="text-base leading-relaxed">
+                        The Fear & Greed Index is a way to gauge stock market movements and whether stocks are fairly priced. The theory is based on the logic that excessive fear tends to drive down share prices, and too much greed tends to have the opposite effect.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-200 mb-2">How is Fear & Greed Calculated?</h3>
+                    <p class="text-base leading-relaxed">
+                        The Fear & Greed Index is a compilation of seven different indicators that measure some aspect of stock market behavior. They are market momentum, stock price strength, stock price breadth, put and call options, junk bond demand, market volatility, and safe haven demand. The index tracks how much these individual indicators deviate from their averages compared to how much they normally diverge. The index gives each indicator equal weighting in calculating a score from 0 to 100, with 100 representing maximum greediness and 0 signaling maximum fear.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-200 mb-2">How often is the Fear & Greed Index calculated?</h3>
+                    <p class="text-base leading-relaxed">
+                        Every component and the Index are calculated as soon as new data becomes available.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-200 mb-2">How to use Fear & Greed Index?</h3>
+                    <p class="text-base leading-relaxed">
+                        The Fear & Greed Index is used to gauge the mood of the market. Many investors are emotional and reactionary, and fear and greed sentiment indicators can alert investors to their own emotions and biases that can influence their decisions. When combined with fundamentals and other analytical tools, the Index can be a helpful way to assess market sentiment.
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -111,14 +174,202 @@
 
         let chartInstance7Days = null;
         let chartInstance30Days = null;
-        let chartInstanceMonthly = null; // New instance for monthly chart
+        let chartInstanceMonthly = null;
+        let gaugeChartInstance = null; // New instance for the gauge chart
 
-        // Function to render/update a Chart.js graph
+        // Function to draw the Fear & Greed Gauge
+        function drawFearGreedGauge(canvasId, value, sentiment, lastUpdatedDate, historicalDataForComparison) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas dimensions explicitly based on its parent's computed size
+            // This ensures it's not tiny initially and scales correctly
+            const parentDiv = canvas.parentElement;
+            canvas.width = parentDiv.clientWidth;
+            canvas.height = parentDiv.clientHeight;
+
+            // Recalculate gauge parameters based on new canvas dimensions
+            const currentCenterX = canvas.width / 2;
+            const currentCenterY = canvas.height * 0.8; // Adjusted to place gauge slightly higher
+            const currentRadius = Math.min(canvas.width, canvas.height) * 0.45; // Adjusted radius for better fit
+
+            // Destroy existing gauge instance if it exists
+            if (gaugeChartInstance) {
+                gaugeChartInstance.destroy();
+            }
+
+            // Clear canvas for redraw
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update value and date display positions
+            const gaugeValueDisplay = document.getElementById('gauge-value-display');
+            const gaugeDateDisplay = document.getElementById('gauge-date-display');
+            
+            // Position value and date displays relative to the gauge center
+            gaugeValueDisplay.style.left = `${currentCenterX}px`;
+            gaugeValueDisplay.style.top = `${currentCenterY - currentRadius * 0.4}px`; // Adjusted position
+            gaugeValueDisplay.style.transform = `translate(-50%, -50%)`; // Center text precisely
+
+            gaugeDateDisplay.style.left = `${currentCenterX}px`;
+            gaugeDateDisplay.style.top = `${currentCenterY + currentRadius * 0.6}px`; // Adjusted position
+            gaugeDateDisplay.style.transform = `translate(-50%, -50%)`; // Center text precisely
+
+            gaugeValueDisplay.textContent = value;
+            gaugeDateDisplay.textContent = `Last updated ${new Date(lastUpdatedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+
+            // --- Draw Gauge ---
+            const startAngle = Math.PI; // 180 degrees (left)
+            const endAngle = 0;        // 0 degrees (right)
+            const totalAngle = Math.PI; // Total 180 degrees
+
+            // Segments: Extreme Fear (0-20), Fear (21-40), Neutral (41-60), Greed (61-80), Extreme Greed (81-100)
+            const segments = [
+                { range: [0, 20], color: '#DC2626', label: 'EXTREME FEAR' }, // red-600
+                { range: [21, 40], color: '#F97316', label: 'FEAR' },       // orange-500
+                { range: [41, 60], color: '#3B82F6', label: 'NEUTRAL' },    // blue-500
+                { range: [61, 80], color: '#22C55E', label: 'GREED' },      // green-500
+                { range: [81, 100], color: '#A855F7', label: 'EXTREME GREED' } // purple-500
+            ];
+
+            // Draw segments
+            segments.forEach(segment => {
+                const startValue = segment.range[0];
+                const endValue = segment.range[1];
+                const segmentStartAngle = startAngle - (startValue / 100) * totalAngle;
+                const segmentEndAngle = startAngle - (endValue / 100) * totalAngle;
+
+                ctx.beginPath();
+                ctx.arc(currentCenterX, currentCenterY, currentRadius, segmentStartAngle, segmentEndAngle, true);
+                ctx.lineWidth = 20; // Thickness of the arc
+                ctx.strokeStyle = segment.color;
+                ctx.stroke();
+
+                // Highlight active segment
+                if (value >= startValue && value <= endValue) {
+                    ctx.beginPath();
+                    ctx.arc(currentCenterX, currentCenterY, currentRadius, segmentStartAngle, segmentEndAngle, true);
+                    ctx.lineWidth = 25; // Slightly thicker for highlight
+                    ctx.strokeStyle = segment.color; // Use segment color for highlight
+                    ctx.stroke();
+                }
+
+                // Segment Labels
+                const midValue = (startValue + endValue) / 2;
+                const midAngle = startAngle - (midValue / 100) * totalAngle;
+                const labelRadius = currentRadius * 0.8; // Position labels inside the arc
+                const labelX = currentCenterX + labelRadius * Math.cos(midAngle);
+                const labelY = currentCenterY - labelRadius * Math.sin(midAngle); // Negative sin for upper half
+
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${currentRadius * 0.08}px Inter`; // Responsive font size
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(segment.label, labelX, labelY);
+            });
+
+            // Draw tick marks and numbers (0, 25, 50, 75, 100)
+            const tickValues = [0, 25, 50, 75, 100];
+            tickValues.forEach(tick => {
+                const angle = startAngle - (tick / 100) * totalAngle;
+                const tickLength = 10;
+                const innerX = currentCenterX + (currentRadius - tickLength) * Math.cos(angle);
+                const innerY = currentCenterY - (currentRadius - tickLength) * Math.sin(angle);
+                const outerX = currentCenterX + (currentRadius + 5) * Math.cos(angle);
+                const outerY = currentCenterY - (currentRadius + 5) * Math.sin(angle);
+
+                ctx.beginPath();
+                ctx.moveTo(innerX, innerY);
+                ctx.lineTo(outerX, outerY);
+                ctx.strokeStyle = '#D1D5DB'; // gray-300
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Tick numbers
+                const textRadius = currentRadius + 20; // Position numbers outside ticks
+                const textX = currentCenterX + textRadius * Math.cos(angle);
+                const textY = currentCenterY - textRadius * Math.sin(angle);
+                ctx.fillStyle = '#D1D5DB'; // gray-300
+                ctx.font = `${currentRadius * 0.08}px Inter`; // Responsive font size
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(tick.toString(), textX, textY);
+            });
+
+            // Draw Needle
+            const needleAngle = startAngle - (value / 100) * totalAngle;
+            const needleLength = currentRadius * 0.9;
+            const needleBaseWidth = 10;
+
+            ctx.beginPath();
+            ctx.moveTo(currentCenterX - needleBaseWidth / 2 * Math.cos(startAngle - Math.PI / 2), currentCenterY - needleBaseWidth / 2 * Math.sin(startAngle - Math.PI / 2));
+            ctx.lineTo(currentCenterX + needleLength * Math.cos(needleAngle), currentCenterY - needleLength * Math.sin(needleAngle));
+            ctx.lineTo(currentCenterX + needleBaseWidth / 2 * Math.cos(startAngle - Math.PI / 2), currentCenterY + needleBaseWidth / 2 * Math.sin(startAngle - Math.PI / 2));
+            ctx.fillStyle = '#EF4444'; // red-500
+            ctx.fill();
+
+            // Central circle for needle
+            ctx.beginPath();
+            ctx.arc(currentCenterX, currentCenterY, needleBaseWidth * 0.7, 0, Math.PI * 2);
+            ctx.fillStyle = '#6B7280'; // gray-500
+            ctx.fill();
+
+            // --- Populate Previous Data (using historicalDataForComparison) ---
+            const populateComparison = (idValue, idSentiment, dateOffset, historicalData, type = 'days') => {
+                const targetDate = new Date(lastUpdatedDate);
+                if (type === 'days') {
+                    targetDate.setDate(targetDate.getDate() - dateOffset);
+                } else if (type === 'months') {
+                    targetDate.setMonth(targetDate.getMonth() - dateOffset);
+                } else if (type === 'years') {
+                    targetDate.setFullYear(targetDate.getFullYear() - dateOffset);
+                }
+                
+                // Normalize targetDate to start of day for comparison
+                targetDate.setHours(0, 0, 0, 0);
+
+                // Find the data point for the target date, prioritizing exact match, then closest previous trading day
+                let dataPoint = historicalData.find(d => {
+                    const recordDate = new Date(d.recordDate);
+                    recordDate.setHours(0, 0, 0, 0); // Normalize recordDate to start of day
+                    return recordDate.getTime() === targetDate.getTime();
+                });
+
+                // If exact match not found, try to find the most recent previous trading day
+                if (!dataPoint) {
+                    const sortedData = [...historicalData].sort((a, b) => new Date(b.recordDate) - new Date(a.recordDate)); // Sort descending
+                    dataPoint = sortedData.find(d => new Date(d.recordDate) <= targetDate);
+                }
+
+                const valueElement = document.getElementById(idValue);
+                const sentimentElement = document.getElementById(idSentiment);
+
+                if (valueElement && sentimentElement) { // Ensure elements exist
+                    if (dataPoint) {
+                        valueElement.textContent = dataPoint.fgiValue;
+                        sentimentElement.textContent = dataPoint.sentiment;
+                        const [bgColorClass, _] = getSentimentStyles(dataPoint.fgiValue);
+                        sentimentElement.className = `text-xs px-2 py-1 rounded-full ${bgColorClass.replace('bg-', 'bg-')}`;
+                    } else {
+                        valueElement.textContent = 'N/A';
+                        sentimentElement.textContent = '';
+                        sentimentElement.className = `text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300`;
+                    }
+                }
+            };
+
+            // Populate comparison values
+            populateComparison('prev-close-value', 'prev-close-sentiment', 1, historicalDataForComparison, 'days');
+            populateComparison('prev-week-value', 'prev-week-sentiment', 7, historicalDataForComparison, 'days');
+            populateComparison('prev-month-value', 'prev-month-sentiment', 1, historicalDataForComparison, 'months');
+            populateComparison('prev-year-value', 'prev-year-sentiment', 1, historicalDataForComparison, 'years');
+        }
+
+
+        // Function to render/update a Chart.js graph (same as before, but with dark theme colors)
         function renderChart(canvasId, data, title) {
             const ctx = document.getElementById(canvasId).getContext('2d');
             let chartInstance;
 
-            // Determine which chart instance to manage
             if (canvasId === 'chart7Days') {
                 chartInstance = chartInstance7Days;
             } else if (canvasId === 'chart30Days') {
@@ -127,16 +378,14 @@
                 chartInstance = chartInstanceMonthly;
             }
 
-            // Destroy existing chart instance if it exists
             if (chartInstance) {
                 chartInstance.destroy();
             }
 
             if (!data || data.length === 0) {
-                // Display "No data" message on canvas
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
                 ctx.font = "18px 'Inter'";
-                ctx.fillStyle = "#4b5563"; // gray-600
+                ctx.fillStyle = "#9CA3AF"; /* gray-400 */
                 ctx.textAlign = "center";
                 ctx.fillText("No data available for this period.", ctx.canvas.width / 2, ctx.canvas.height / 2);
                 return;
@@ -156,14 +405,14 @@
                     datasets: [{
                         label: 'FGI Value',
                         data: values,
-                        borderColor: 'rgba(99, 102, 241, 1)', // Indigo-500
+                        borderColor: 'rgba(96, 165, 250, 1)', /* blue-400 */
                         backgroundColor: (context) => {
                             const chart = context.chart;
                             const {ctx, chartArea} = chart;
                             if (!chartArea) return;
                             const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                            gradient.addColorStop(0, 'rgba(199, 210, 254, 0.5)'); // Indigo-200 with transparency
-                            gradient.addColorStop(1, 'rgba(165, 180, 252, 0.3)'); // Indigo-300 with transparency
+                            gradient.addColorStop(0, 'rgba(96, 165, 250, 0.2)');
+                            gradient.addColorStop(1, 'rgba(96, 165, 250, 0)');
                             return gradient;
                         },
                         fill: true,
@@ -178,17 +427,20 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: {
-                        padding: 20 // Padding around the chart content within the canvas
+                        padding: 20
                     },
                     plugins: {
                         tooltip: {
                             callbacks: {
                                 label: context => `${context.dataset.label}: ${context.parsed.y} (${sentiments[context.dataIndex]})`
-                            }
+                            },
+                            backgroundColor: 'rgba(31, 41, 55, 0.9)', /* gray-800 */
+                            titleColor: '#F9FAFB', /* gray-50 */
+                            bodyColor: '#D1D5DB', /* gray-300 */
                         },
                         legend: {
                             labels: {
-                                color: '#374151', /* gray-700 */
+                                color: '#F9FAFB', /* gray-50 */
                                 font: {
                                     family: 'Inter',
                                     size: 14,
@@ -199,20 +451,19 @@
                     },
                     scales: {
                         x: {
-                            ticks: { color: '#4b5563', font: { family: 'Inter', size: 12 } }, /* gray-600 */
+                            ticks: { color: '#9CA3AF', font: { family: 'Inter', size: 12 } }, /* gray-400 */
                             grid: { display: false }
                         },
                         y: {
                             beginAtZero: true,
                             max: 100,
-                            ticks: { color: '#4b5563', font: { family: 'Inter', size: 12 } }, /* gray-600 */
-                            grid: { color: 'rgba(209, 213, 219, 0.5)' } /* gray-300 with transparency */
+                            ticks: { color: '#9CA3AF', font: { family: 'Inter', size: 12 } }, /* gray-400 */
+                            grid: { color: 'rgba(75, 85, 99, 0.5)' } /* gray-600 with transparency */
                         }
                     }
                 }
             };
 
-            // Assign the new chart instance
             if (canvasId === 'chart7Days') {
                 chartInstance7Days = new Chart(ctx, chartConfig);
             } else if (canvasId === 'chart30Days') {
@@ -239,59 +490,62 @@
                 option.textContent = month;
                 monthSelect.appendChild(option);
             });
-            // Set current month as default
-            monthSelect.value = new Date().getMonth() + 1;
+            monthSelect.value = new Date().getMonth() + 1; // Set current month as default
 
             // Populate years (current year and previous 4 years = 5 years total viewable)
-            for (let i = 0; i < 5; i++) { // Changed from 6 to 5 for 5-year viewable timeline
+            for (let i = 0; i < 5; i++) {
                 const year = currentYear - i;
                 const option = document.createElement('option');
                 option.value = year;
                 option.textContent = year;
                 yearSelect.appendChild(option);
             }
-            // Set current year as default
-            yearSelect.value = currentYear;
+            yearSelect.value = currentYear; // Set current year as default
         }
 
         // Main data fetching and UI update logic
         async function fetchAndRenderData() {
-            const todayCardElement = document.getElementById('today-data-card');
-            
-            // Show loading state for today's card
-            todayCardElement.innerHTML = `
-                <div class="p-6 rounded-2xl shadow-xl text-white text-center bg-gray-500">
-                    <h2 class="text-xl font-semibold mb-2">Today’s Fear & Greed Index</h2>
-                    <p class="text-6xl font-black mb-2">Loading...</p>
-                    <p class="text-2xl font-semibold mb-2">Fetching Data</p>
-                    <p class="text-sm opacity-80 italic">As of --/--/----</p>
-                </div>
-            `;
+            // Show loading state for gauge
+            document.getElementById('gauge-value-display').textContent = '...';
+            document.getElementById('gauge-date-display').textContent = 'Loading...';
 
             try {
-                // Fetch today's data
+                // Fetch today's data (will trigger on-demand fetch if missing in backend)
                 const todayResponse = await fetch(`${API_BASE_URL}/today`);
+                let todayData = null;
                 if (todayResponse.ok) {
-                    const todayData = await todayResponse.json();
-                    const [bgColor, sentimentLabel] = getSentimentStyles(todayData.fgiValue);
-                    todayCardElement.innerHTML = `
-                        <div class="p-8 rounded-2xl shadow-xl text-white text-center ${bgColor}">
-                            <h2 class="text-4xl font-extrabold mb-4">Today’s Fear & Greed Index</h2>
-                            <p class="text-7xl font-black leading-tight">${todayData.fgiValue}</p>
-                            <p class="text-3xl font-semibold mt-3 text-white">${sentimentLabel}</p>
-                            <p class="text-sm opacity-90 italic">As of ${new Date(todayData.recordDate).toLocaleDateString()}</p>
-                        </div>
-                    `;
+                    todayData = await todayResponse.json();
                 } else if (todayResponse.status === 404) {
-                    todayCardElement.innerHTML = `
-                        <div class="p-8 rounded-2xl shadow-xl text-center bg-yellow-50 border border-yellow-200 text-yellow-800">
-                            <p class="font-semibold text-lg">Today's Fear & Greed Index data is not available.</p>
-                            <p class="text-sm mt-2">It might be a weekend/holiday, or the daily fetch hasn't run.</p>
-                        </div>
-                    `;
+                    console.warn("Today's data not found (404). Displaying N/A.");
                 } else {
                     throw new Error(`HTTP error! status for today's data: ${todayResponse.status}`);
                 }
+
+                // Fetch enough historical data for gauge comparison (1 week, 1 month, 1 year ago)
+                // Fetching 366 days to cover a full year + buffer for non-trading days
+                const historyForComparisonResponse = await fetch(`${API_BASE_URL}/history?days=366`);
+                let historicalDataForComparison = [];
+                if (historyForComparisonResponse.ok) {
+                    historicalDataForComparison = await historyForComparisonResponse.json();
+                } else {
+                    console.warn("Could not fetch historical data for gauge comparison.");
+                }
+
+                if (todayData) {
+                    drawFearGreedGauge('fearGreedGauge', todayData.fgiValue, todayData.sentiment, todayData.timestamp, historicalDataForComparison);
+                } else {
+                    // If today's data is not available, show default N/A state on gauge and comparisons
+                    drawFearGreedGauge('fearGreedGauge', 0, 'N/A', new Date().toISOString().split('T')[0], []); // Show 0 or default
+                    document.getElementById('gauge-value-display').textContent = 'N/A';
+                    document.getElementById('gauge-date-display').textContent = 'Data Not Available';
+                    // Ensure previous comparison values are also N/A
+                    ['prev-close', 'prev-week', 'prev-month', 'prev-year'].forEach(id => {
+                        document.getElementById(`${id}-value`).textContent = 'N/A';
+                        document.getElementById(`${id}-sentiment`).textContent = '';
+                        document.getElementById(`${id}-sentiment`).className = `text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300`;
+                    });
+                }
+
 
                 // Fetch historical data (7 days)
                 const history7DaysResponse = await fetch(`${API_BASE_URL}/history?days=7`);
@@ -302,20 +556,30 @@
                     throw new Error(`HTTP error! status for 7-day history: ${history7DaysResponse.status}`);
                 }
 
-                // Fetch historical data (30 days)
-                const history30DaysResponse = await fetch(`${API_BASE_URL}/history?days=30`);
-                if (history30DaysResponse.ok) {
-                    const historicalData30Days = await history30DaysResponse.json();
-                    renderChart('chart30Days', historicalData30Days, 'Last 30 Days');
+                // Fetch historical data (30 days) - filter from larger dataset if available, else fetch
+                let historicalData30DaysForChart = historicalDataForComparison.length > 0 ? historicalDataForComparison.filter(d => {
+                    const recordDate = new Date(d.recordDate);
+                    const thirtyDaysAgo = new Date();
+                    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                    return recordDate >= thirtyDaysAgo;
+                }) : await (await fetch(`${API_BASE_URL}/history?days=30`)).json();
+
+                // Re-check response status if a new fetch occurred
+                // (Note: history30DaysResponse might not be the one used if filtered from historicalDataForComparison)
+                // A more robust check would be to ensure the data itself is not empty.
+                if (historicalData30DaysForChart.length > 0) {
+                     renderChart('chart30Days', historicalData30DaysForChart, 'Last 30 Days');
                 } else {
-                    throw new Error(`HTTP error! status for 30-day history: ${history30DaysResponse.status}`);
+                    console.warn("No 30-day historical data available for chart.");
+                    renderChart('chart30Days', [], 'Last 30 Days'); // Render empty chart with "No data" message
                 }
+
 
                 // Initial monthly chart load (current month)
                 const monthSelect = document.getElementById('month-select');
                 const yearSelect = document.getElementById('year-select');
-                const currentMonth = parseInt(monthSelect.value); // Use value from dropdown
-                const currentYear = parseInt(yearSelect.value);   // Use value from dropdown
+                const currentMonth = parseInt(monthSelect.value);
+                const currentYear = parseInt(yearSelect.value);
 
                 const monthlyResponse = await fetch(`${API_BASE_URL}/history-by-month?year=${currentYear}&month=${currentMonth}`);
                 if (monthlyResponse.ok) {
@@ -324,7 +588,6 @@
                 } else {
                     throw new Error(`HTTP error! status for monthly data: ${monthlyResponse.status}`);
                 }
-
 
             } catch (error) {
                 console.error("Error fetching or rendering data:", error);
@@ -350,7 +613,6 @@
                         const data = await response.json();
                         renderChart('chartMonthly', data, `Data for ${months[month - 1]} ${year}`);
                         if (data.length === 0) {
-                            // This message is already handled by renderChart, but can add console log
                             console.log(`No data found for ${months[month - 1]} ${year}.`);
                         }
                     } else {
@@ -358,14 +620,19 @@
                     }
                 } catch (error) {
                     console.error("Error fetching monthly data:", error);
-                    // Instead of alert, the chart will show "No data available" if the fetch fails or returns empty
                     renderChart('chartMonthly', [], ''); // Clear chart on error
                 }
             });
         });
 
-        // Global months array for dropdowns (defined after its use in populateMonthYearDropdowns)
-        // Moved to top for better scope management
+        // Add a resize event listener to redraw charts and gauge on window resize
+        window.addEventListener('resize', () => {
+            // Re-render all charts to adjust to new dimensions
+            // This re-fetches data, which might be inefficient, but ensures full redraw
+            // For a production app, you might debounce this or pass existing data.
+            fetchAndRenderData(); 
+        });
+
         const months = [
             "January", "February", "March", "April", "May", "June",
             "July", "August", "September", "October", "November", "December"
